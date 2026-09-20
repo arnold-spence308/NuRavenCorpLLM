@@ -1,0 +1,48 @@
+# .NET / C#
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.DotSettings.user
+TestResults/
+publish/
+
+# Node / Frontend
+node_modules/
+dist/
+.next/
+.nuxt/
+.cache/
+*.tsbuildinfo
+frontend/node_modules/
+frontend/dist/
+nuravencorpllm.client/node_modules/
+nuravencorpllm.client/dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+*.egg-info/
+
+# Docker / build artefacts
+*.log
+*.tmp
+
+# Secrets / local config
+appsettings.Local.json
+.env.local
+.env.*.local
+secrets/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# psql binary
+psql
