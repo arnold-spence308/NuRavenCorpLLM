@@ -20,6 +20,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('nr_token');
+      localStorage.removeItem('nr_user');
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.assign('/login');
+      }
     }
     return Promise.reject(error);
   }
@@ -27,7 +31,7 @@ api.interceptors.response.use(
 
 export const endpoints = {
   clients: '/clients',
-  conversations: '/conversations',
+  conversations: '/assistant/conversations',
   knowledge: '/knowledge',
   ingestion: '/ingestion',
   craft: '/craft',

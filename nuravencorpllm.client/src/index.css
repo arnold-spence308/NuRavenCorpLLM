@@ -361,6 +361,96 @@ a {
   color: #ff8181;
 }
 
+.success-text {
+  color: #8cffb2;
+}
+
+.learning-stack {
+  display: grid;
+  gap: 14px;
+  max-width: 980px;
+}
+
+.learning-section h2 {
+  margin-top: 0;
+}
+
+.learning-section p {
+  line-height: 1.55;
+}
+
+.learning-section ol {
+  margin-top: 0;
+  padding-left: 20px;
+  color: #d5d9e6;
+}
+
+.code-block {
+  margin: 8px 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+  overflow: auto;
+}
+
+.quiz-card {
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+}
+
+.quiz-option {
+  display: block;
+  margin: 8px 0;
+  color: #d8def3;
+}
+
+.quiz-option input {
+  margin-right: 8px;
+}
+
+.learning-editor {
+  min-height: 96px;
+}
+
+.resource-list {
+  display: grid;
+  gap: 8px;
+}
+
+.resource-list a {
+  color: #a7b7ff;
+}
+
+.feedback-form {
+  display: grid;
+  gap: 12px;
+}
+
+.feedback-form label {
+  display: grid;
+  gap: 6px;
+  color: #d6dcef;
+}
+
+.feedback-form input,
+.feedback-form textarea,
+.feedback-form select {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f4f6ff;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.feedback-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
 @media (max-width: 1020px) {
   .app-shell {
     grid-template-columns: 1fr;

@@ -8,6 +8,7 @@ namespace NuRavenCorpLLM.Application.Services.Assistant;
 
 public sealed class FolderKnowledgeOptions
 {
+    public bool Enabled { get; set; } = true;
     public string RootPath { get; set; } = string.Empty;
     public bool IncludeSubdirectories { get; set; } = true;
     public int ScanIntervalMinutes { get; set; } = 15;
@@ -34,6 +35,12 @@ public sealed class FolderKnowledgeIngestionService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!_options.Enabled)
+        {
+            _logger.LogInformation("Folder knowledge is disabled by configuration.");
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(_options.RootPath))
         {
             _logger.LogInformation("Folder knowledge is disabled because no root path is configured.");

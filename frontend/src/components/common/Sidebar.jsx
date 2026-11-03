@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { FiGrid, FiMessageSquare, FiBook, FiDownloadCloud, FiFeather, FiCpu, FiTrendingUp, FiBarChart2, FiUsers, FiShield } from 'react-icons/fi';
+import { FiGrid, FiMessageSquare, FiBook, FiDownloadCloud, FiFeather, FiCpu, FiTrendingUp, FiBarChart2, FiUsers, FiShield, FiRadio } from 'react-icons/fi';
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: FiGrid },
@@ -13,6 +13,7 @@ const nav = [
   { to: '/analytics', label: 'Analytics', icon: FiBarChart2 },
   { to: '/clients', label: 'Clients', icon: FiUsers },
   { to: '/governance', label: 'Governance', icon: FiShield },
+  { to: '/stream-studio', label: 'Stream Studio', icon: FiRadio },
 ];
 
 export function Sidebar() {

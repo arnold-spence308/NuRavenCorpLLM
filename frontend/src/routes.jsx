@@ -12,6 +12,7 @@ import LearningPage from './pages/LearningPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import ClientsPage from './pages/ClientsPage';
 import GovernancePage from './pages/GovernancePage';
+import StreamStudioPage from './pages/StreamStudioPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 function RequireAuth({ children }) {
@@ -52,6 +53,7 @@ export default function AppRoutes() {
       <Route path="/analytics" element={<RequireAuth><AnalyticsPage /></RequireAuth>} />
       <Route path="/clients" element={<RequireAuth><ClientsPage /></RequireAuth>} />
       <Route path="/governance" element={<RequireAuth><GovernancePage /></RequireAuth>} />
+      <Route path="/stream-studio" element={<RequireAuth><StreamStudioPage /></RequireAuth>} />
       <Route path="*" element={<RequireAuth><NotFoundPage /></RequireAuth>} />
     </Routes>
   );

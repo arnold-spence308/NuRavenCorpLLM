@@ -1,10 +1,13 @@
 // API/Controllers/Assistant/AssistantController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using NuRavenCorpLLM.Application.Services.Assistant;
 using NuRavenCorpLLM.Core.Interfaces.Repositories.Assistant;
 using NuRavenCorpLLM.Entities;
+using NuRavenCorpLLM.Infrastructure.Data;
 using NuRavenCorpLLM.Infrastructure.Security;
+using System.Security.Claims;
 
 namespace NuRavenCorpLLM.Controllers;
 
@@ -18,25 +21,34 @@ public class AssistantController : ControllerBase
     private readonly ITextToSpeechService _tts;
     private readonly Core.Interfaces.Repositories.Assistant.IAssistantConversationRepository _convRepo;
     private readonly Core.Interfaces.Repositories.Assistant.IAssistantMessageRepository _msgRepo;
+    private readonly ApplicationDbContext _db;
 
     public AssistantController(
         NuRavenCorpLLM.Application.Services.IAssistantOrchestrator orchestrator,
         ISpeechToTextService stt,
         ITextToSpeechService tts,
         Core.Interfaces.Repositories.Assistant.IAssistantConversationRepository convRepo,
-        Core.Interfaces.Repositories.Assistant.IAssistantMessageRepository msgRepo)
+        Core.Interfaces.Repositories.Assistant.IAssistantMessageRepository msgRepo,
+        ApplicationDbContext db)
     {
         _orchestrator = orchestrator;
         _stt = stt;
         _tts = tts;
         _convRepo = convRepo;
         _msgRepo = msgRepo;
+        _db = db;
     }
 
     [HttpPost("conversations")]
     public async Task<IActionResult> Create([FromBody] CreateConversationDto dto)
     {
         var userId = User.GetUserId();
+        if (userId == Guid.Empty)
+        {
+            return Unauthorized();
+        }
+        await EnsureUserExistsAsync(userId);
+
         var conv = await _orchestrator.CreateConversationAsync(
             userId,
             dto.Title,
@@ -94,4 +106,26 @@ public class AssistantController : ControllerBase
     public record SendMessageDto(string Text, bool IsVoice = false);
     public record SpeakDto(string Text, string? VoiceId);
     public record FeedbackDto(string Vote, int? Rating, string? Comment, string? CorrectedResponse);
+
+    private async Task EnsureUserExistsAsync(Guid userId)
+    {
+        var exists = await _db.Users.AnyAsync(u => u.Id == userId);
+        if (exists)
+        {
+            return;
+        }
+
+        var email =
+            User.FindFirstValue(ClaimTypes.Email) ??
+            User.FindFirstValue(ClaimTypes.Name) ??
+            "unknown@local";
+
+        _db.Users.Add(new User
+        {
+            Id = userId,
+            Email = email,
+            DisplayName = "User"
+        });
+        await _db.SaveChangesAsync();
+    }
 }

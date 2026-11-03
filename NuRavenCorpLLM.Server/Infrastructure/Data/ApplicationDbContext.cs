@@ -34,4 +34,15 @@ public class ApplicationDbContext : DbContext
     public DbSet<CraftCoachingSession> CraftCoachingSessions => Set<CraftCoachingSession>();
     public DbSet<CraftCoachingSuggestion> CraftCoachingSuggestions => Set<CraftCoachingSuggestion>();
     public DbSet<UserCraftProfile> UserCraftProfiles => Set<UserCraftProfile>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<AssistantConversation>().ToTable("assistant_conversations");
+        modelBuilder.Entity<AssistantMessage>().ToTable("assistant_messages");
+        modelBuilder.Entity<AssistantFeedback>().ToTable("assistant_feedback");
+        modelBuilder.Entity<AssistantKnowledge>().ToTable("assistant_knowledge");
+        modelBuilder.Entity<AssistantLearningSample>().ToTable("assistant_learning_samples");
+    }
 }

@@ -9,6 +9,7 @@ import { api, endpoints } from '../lib/api';
 import { useConversation } from '../hooks/useConversation';
 import { FiMessageSquare } from 'react-icons/fi';
 import { Button } from '../components/common/Button';
+import toast from 'react-hot-toast';
 
 export default function ConversationsPage() {
   const [activeId, setActiveId] = useState(null);
@@ -21,9 +22,13 @@ export default function ConversationsPage() {
   }, [done]);
 
   const createConversation = async () => {
-    const { data } = await api.post(endpoints.conversations, { title: 'New conversation', persona });
-    setActiveId(data.id);
-    setMessages([]);
+    try {
+      const { data } = await api.post(endpoints.conversations, { title: 'New conversation', persona });
+      setActiveId(data.id);
+      setMessages([]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create conversation');
+    }
   };
 
   const handleSend = (text) => {

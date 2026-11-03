@@ -1,29 +1,82 @@
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.ResponseCompression;
-using Microsoft.Identity.Web;
+using Microsoft.IdentityModel.Tokens;
+using NuRavenCorpLLM.Application.Algtorithms;
 using NuRavenCorpLLM.Application.Services.Ai;
 using NuRavenCorpLLM.Application.Services.Ai.Repositories;
 using NuRavenCorpLLM.Application.Services.Assistant;
+using NuRavenCorpLLM.Application.Services.Learning;
 using NuRavenCorpLLM.Core.Interfaces.Repositories.Assistant;
 using NuRavenCorpLLM.Entities.Ai.DataSources;
 using NuRavenCorpLLM.Hubs;
 using NuRavenCorpLLM.Infrastructure.External;
 using NuRavenCorpLLM.Infrastructure.Data;
+using NuRavenCorpLLM.Infrastructure.Security;
 using NuRavenCorpLLM.Infrastructure.Vector;
 using NuRavenCorpLLM.Services;
 using NuRavenCorpLLM.Server.Data.Repositories.Assistant;
+using System.Security.Claims;
+using System.Text;
 using System.Net;
 var builder = WebApplication.CreateBuilder(args);
 
+var jwtSettings = JwtAuthSettings.Create(builder.Configuration, builder.Environment.IsDevelopment());
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SigningKey)),
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtSettings.Audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(2),
+            NameClaimType = ClaimTypes.Name,
+            RoleClaimType = ClaimTypes.Role
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var path = context.HttpContext.Request.Path;
+                if (!path.StartsWithSegments("/hubs/assistant") && !path.StartsWithSegments("/hubs/ai-data"))
+                {
+                    return Task.CompletedTask;
+                }
+
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrWhiteSpace(accessToken))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+    });
 
 // Add services to the container.
 
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
+builder.Services.AddMemoryCache();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendDev", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 
 
@@ -31,6 +84,12 @@ builder.Services.AddScoped<ILlmIntentRouter, LlmIntentRouter>();
 builder.Services.AddScoped<IAiDataOrchestrator, AiDataOrchestrator>();
 builder.Services.Configure<FolderKnowledgeOptions>(builder.Configuration.GetSection("FolderKnowledge"));
 builder.Services.Configure<OpenAiOptions>(builder.Configuration.GetSection("OpenAI"));
+builder.Services.Configure<NuRavenCorpLLM.Application.Services.AssistantOptions>(builder.Configuration.GetSection("Assistant"));
+builder.Services.Configure<WhisperOptions>(builder.Configuration.GetSection("Whisper"));
+builder.Services.Configure<TtsOptions>(builder.Configuration.GetSection("Tts"));
+builder.Services.Configure<BootstrapLoginOptions>(builder.Configuration.GetSection("BootstrapLogin"));
+builder.Services.AddSingleton(jwtSettings);
+builder.Services.AddSingleton<IJwtTokenFactory, JwtTokenFactory>();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DatabaseConnection")
@@ -50,7 +109,24 @@ builder.Services.AddHttpClient<OpenAiClient>();
 builder.Services.AddScoped<ILlmGateway>(sp => sp.GetRequiredService<OpenAiClient>());
 builder.Services.AddScoped<IPgVectorStore, PgVectorStore>();
 builder.Services.AddScoped<IEmbeddingService, EmbeddingService>();
+builder.Services.AddScoped<PromptBuilder>();
+builder.Services.AddScoped<IRagRetriever, RagRetriever>();
+builder.Services.AddScoped<IWebGroundingService, WebGroundingService>();
+builder.Services.AddScoped<IAssistantSafetyService, AssistantSafetyService>();
+builder.Services.AddScoped<IAssistantPersonaService, AssistantPersonaService>();
+builder.Services.AddScoped<IChatterLearningService, ChatterLearningService>();
+builder.Services.AddScoped<IFeedbackLearningService, FeedbackLearningService>();
+builder.Services.AddSingleton<ILearningPipelineConduit, LearningPipelineConduit>();
+builder.Services.AddSingleton<ILearningPipelineConduitReader>(sp =>
+    (ILearningPipelineConduitReader)sp.GetRequiredService<ILearningPipelineConduit>());
+builder.Services.AddScoped<NuRavenCorpLLM.Application.Services.IAssistantOrchestrator, NuRavenCorpLLM.Application.Services.AssistantOrchestrator>();
+builder.Services.AddScoped<IAssistantConversationRepository, AssistantConversationRepository>();
+builder.Services.AddScoped<IAssistantMessageRepository, AssistantMessageRepository>();
+builder.Services.AddScoped<IAssistantFeedbackRepository, AssistantFeedbackRepository>();
+builder.Services.AddScoped<IAssistantLearningSampleRepository, AssistantLearningSampleRepository>();
 builder.Services.AddScoped<IAssistantKnowledgeRepository, AssistantKnowledgeRepository>();
+builder.Services.AddHttpClient<ISpeechToTextService, SpeechToTextService>();
+builder.Services.AddHttpClient<ITextToSpeechService, TextToSpeechService>();
 
 builder.Services.AddScoped<IDataSourceAdapter, PostsDataSource>();
 builder.Services.AddScoped<IDataSourceAdapter, VideosDataSource>();
@@ -63,9 +139,28 @@ builder.Services.AddScoped<IDataSourceAdapter, CollaborationDataSource>();
 builder.Services.AddScoped<IDataSourceAdapter, UsersDataSource>();
 
 builder.Services.AddHostedService<AiDataSeedService>();
-builder.Services.AddHostedService<FolderKnowledgeIngestionService>();
+var openAiApiKey = builder.Configuration["OpenAI:ApiKey"];
+if (!string.IsNullOrWhiteSpace(openAiApiKey))
+{
+    builder.Services.AddHostedService<FolderKnowledgeIngestionService>();
+}
+builder.Services.AddHostedService<ChatterLearningBackgroundService>();
+builder.Services.AddHostedService<LearningPipelineConduitWorker>();
 
 var app = builder.Build();
+
+if (jwtSettings.IsEphemeralKey)
+{
+    app.Logger.LogWarning(
+        "Authentication:Jwt:Key is not set. Using an ephemeral development signing key; active sessions will be invalid after restart.");
+}
+
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.EnsureCreated();
+}
 
 app.UseDefaultFiles();
 app.MapStaticAssets();
@@ -131,6 +226,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("FrontendDev");
 
 app.UseAuthentication();
 app.UseAuthorization();

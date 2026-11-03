@@ -9,8 +9,8 @@ import toast from 'react-hot-toast';
 import { FiMail, FiLock, FiArrowRight } from 'react-icons/fi';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@wiseravenshare.com');
+  const [password, setPassword] = useState('1@Chinchin234');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();

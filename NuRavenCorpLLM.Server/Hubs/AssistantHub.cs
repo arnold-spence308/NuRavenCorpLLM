@@ -30,19 +30,27 @@ public class AssistantHub : Hub
 
     public async Task SendText(Guid conversationId, string text, bool voiceReply)
     {
-        await foreach (var evt in _orchestrator.StreamAsync(conversationId, Context.User!.GetUserId(), text))
+        try
         {
-            await Clients.Caller.SendAsync("chunk", evt);
-        }
-
-        if (voiceReply)
-        {
-            var last = await GetLastAssistantMessageAsync(conversationId);
-            if (last != null)
+            await foreach (var evt in _orchestrator.StreamAsync(conversationId, Context.User!.GetUserId(), text))
             {
-                var ttsResult = await _tts.SynthesizeAsync(last.Content, "alloy");
-                await Clients.Caller.SendAsync("audio", Convert.ToBase64String(ttsResult.Audio), ttsResult.MimeType);
+                await Clients.Caller.SendAsync("chunk", ToHubEvent(evt));
             }
+
+            if (voiceReply)
+            {
+                var last = await GetLastAssistantMessageAsync(conversationId);
+                if (last != null)
+                {
+                    var ttsResult = await _tts.SynthesizeAsync(last.Content, "alloy");
+                    await Clients.Caller.SendAsync("audio", Convert.ToBase64String(ttsResult.Audio), ttsResult.MimeType);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Stream failed for conversation {ConversationId}", conversationId);
+            await Clients.Caller.SendAsync("chunk", new HubStreamEvent("error", null, null, ex.Message));
         }
     }
 
@@ -54,10 +62,29 @@ public class AssistantHub : Hub
 
         await foreach (var evt in _orchestrator.StreamAsync(conversationId, Context.User!.GetUserId(), stt.Text, true))
         {
-            await Clients.Caller.SendAsync("chunk", evt);
+            await Clients.Caller.SendAsync("chunk", ToHubEvent(evt));
         }
+    }
+
+    private static HubStreamEvent ToHubEvent(AssistantStreamEvent evt)
+    {
+        return new HubStreamEvent(
+            evt.Type,
+            evt.Delta,
+            evt.Message is null ? null : new HubAssistantMessage(
+                evt.Message.Id,
+                evt.Message.ConversationId,
+                evt.Message.Role.ToString(),
+                evt.Message.Content,
+                evt.Message.CreatedAt
+            ),
+            evt.Error
+        );
     }
 
     private Task<AssistantMessage?> GetLastAssistantMessageAsync(Guid conversationId)
         => Task.FromResult<AssistantMessage?>(null); // wire to repo
+
+    private sealed record HubStreamEvent(string Type, string? Delta, HubAssistantMessage? Message, string? Error);
+    private sealed record HubAssistantMessage(Guid Id, Guid ConversationId, string Role, string Content, DateTime CreatedAt);
 }
